@@ -1,0 +1,70 @@
+{
+  "manifest_version": 3,
+  "name": "W Scanner \u2014 mrww",
+  "version": "1.0.0",
+  "description": "W Scanner by mrww. Real-time memecoin analyzer for Axiom Pro.",
+  "permissions": [
+    "storage",
+    "sidePanel",
+    "clipboardWrite",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://axiom.trade/*",
+    "https://api.dexscreener.com/*",
+    "https://api.rugcheck.xyz/*",
+    "https://frontend-api.pump.fun/*",
+    "https://public-api.birdeye.so/*",
+    "https://api.geckoterminal.com/*",
+    "https://mainnet.helius-rpc.com/*",
+    "wss://pumpportal.fun/*",
+    "https://api.solscan.io/*",
+    "https://pro-api.solscan.io/*",
+    "https://gmgn.ai/*",
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "https://api.mainnet-beta.solana.com/*",
+    "https://frontend-api.letsbonk.fun/*",
+    "https://api.letsbonk.fun/*",
+    "https://pumpportal.fun/*",
+    "https://bonk.fun/*",
+    "https://letsbonk.fun/*",
+    "https://ai.6551.io/*",
+    "wss://gmgn.ai/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://axiom.trade/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*"
+      ],
+      "js": [
+        "content_x.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "Open W Scanner"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

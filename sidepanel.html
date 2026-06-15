@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>W Scanner — mrww</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0c10;--bg2:#0d1117;--bg3:#1c2128;
+  --border:#1e2530;--border2:#30363d;
+  --text:#e6edf3;--text2:#c9d1d9;--mute:#8b949e;--dim:#484f58;
+  --blue:#58a6ff;--green:#3fb950;--yellow:#d2a520;
+  --red:#f85149;--gold:#f0a500;--orange:#e8894a;--purple:#bc8cff;
+}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--text2);
+  font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;font-size:13px;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100vh}
+
+/* HEADER */
+#header{display:flex;align-items:center;justify-content:space-between;
+  padding:9px 12px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
+.logo{display:flex;align-items:center;gap:7px}
+.logo-diamond{color:var(--blue);font-size:14px;animation:pulse 3s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.logo-title{font-size:11px;font-weight:700;letter-spacing:2.5px;color:var(--text)}
+.header-right{display:flex;align-items:center;gap:5px}
+.auto-badge{font-size:9px;background:rgba(63,185,80,0.15);color:var(--green);
+  border:1px solid rgba(63,185,80,0.3);padding:2px 6px;border-radius:10px;letter-spacing:0.5px;cursor:pointer}
+.auto-badge.paused{background:rgba(248,81,73,0.1);color:var(--red);border-color:rgba(248,81,73,0.3)}
+.icon-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--mute);
+  width:24px;height:24px;border-radius:5px;cursor:pointer;display:flex;
+  align-items:center;justify-content:center;font-size:12px;transition:all 0.15s}
+.icon-btn:hover{background:#21262d;color:var(--text);border-color:var(--blue)}
+
+/* TOP TABS */
+#top-tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
+.top-tab{flex:1;padding:7px 3px;text-align:center;font-size:10px;font-weight:600;
+  letter-spacing:0.5px;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s}
+.top-tab:hover{color:var(--mute)}
+.top-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+
+/* VIEWS */
+.view{display:none;flex:1;overflow-y:auto;overflow-x:hidden;flex-direction:column;
+  scrollbar-width:thin;scrollbar-color:#21262d transparent}
+.view.active{display:flex}
+.view::-webkit-scrollbar{width:3px}
+.view::-webkit-scrollbar-thumb{background:#21262d;border-radius:3px}
+#scan-view{padding:10px;gap:7px}
+#wallet-view,#history-view,#filters-view,#debug-view,#settings-view{padding:12px;gap:10px}
+
+/* IDLE / LOADING */
+#idle-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  color:var(--dim);text-align:center;gap:10px;padding:40px 16px}
+.idle-icon{font-size:36px;color:#21262d}
+.idle-text{font-size:12px;line-height:1.7;color:var(--dim)}
+#loading-state{display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;padding:50px 16px;color:var(--blue)}
+.spinner{width:24px;height:24px;border:2px solid #21262d;
+  border-top-color:var(--blue);border-radius:50%;animation:spin 0.7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:11px;color:var(--mute)}
+
+/* RESULT */
+#result-state{display:none;flex-direction:column;gap:7px}
+
+/* TOKEN HEADER */
+.token-header{display:flex;align-items:center;gap:10px;padding:9px 11px;
+  background:var(--bg2);border:1px solid var(--border);border-radius:9px;transition:all 0.4s ease;position:relative}
+.token-header.golden{border-color:var(--gold)!important;
+  animation:goldPulse 2s ease-in-out infinite}
+@keyframes goldPulse{
+  0%,100%{box-shadow:0 0 16px rgba(240,165,0,0.2)}
+  50%{box-shadow:0 0 28px rgba(240,165,0,0.45),0 0 8px rgba(240,165,0,0.2)}}
+.rescan-btn{position:absolute;top:6px;left:6px;background:var(--bg3);border:1px solid var(--border2);
+  color:var(--mute);font-size:9px;padding:2px 6px;border-radius:4px;cursor:pointer;transition:all 0.15s;z-index:2}
+.rescan-btn:hover{border-color:var(--blue);color:var(--blue)}
+.token-img{width:42px;height:42px;border-radius:50%;object-fit:cover;
+  border:2px solid var(--border);background:var(--bg3);flex-shrink:0}
+.token-img-ph{width:42px;height:42px;border-radius:50%;background:var(--bg3);
+  border:2px solid var(--border);display:flex;align-items:center;justify-content:center;
+  color:#30363d;font-size:18px;flex-shrink:0}
+.token-info{flex:1;min-width:0}
+.token-top-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.token-symbol{font-size:16px;font-weight:800;color:var(--text)}
+.copy-ca-btn{background:none;border:1px solid var(--border2);color:var(--dim);
+  font-size:9px;padding:2px 6px;border-radius:4px;cursor:pointer;transition:all 0.15s;white-space:nowrap}
+.copy-ca-btn:hover{border-color:var(--blue);color:var(--blue)}
+.copy-ca-btn.copied{border-color:var(--green);color:var(--green)}
+.token-name-row{display:flex;align-items:center;gap:6px;margin-top:2px}
+.token-name{font-size:10px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.token-age{font-size:10px;color:var(--mute);background:var(--bg3);
+  border:1px solid var(--border);padding:1px 6px;border-radius:4px;white-space:nowrap;flex-shrink:0}
+.wallet-badge{display:inline-block;font-size:9px;font-weight:600;
+  padding:2px 7px;border-radius:3px;margin-top:3px}
+.wb-none{background:rgba(248,81,73,0.15);color:var(--red)}
+.wb-few{background:rgba(210,153,34,0.15);color:var(--yellow)}
+.wb-good{background:rgba(63,185,80,0.15);color:var(--green)}
+
+/* VERDICT */
+.verdict-box{border-radius:9px;padding:11px 13px;text-align:center;border:1px solid transparent}
+.v-rugged{background:rgba(139,0,0,0.15);border-color:rgba(200,0,0,0.4)}
+.v-fake{background:rgba(139,0,139,0.12);border-color:rgba(180,0,180,0.4)}
+.v-risky{background:rgba(248,81,73,0.08);border-color:rgba(248,81,73,0.3)}
+.v-moderate{background:rgba(210,153,34,0.08);border-color:rgba(210,153,34,0.3)}
+.v-runner{background:rgba(63,185,80,0.1);border-color:rgba(63,185,80,0.35);
+  box-shadow:0 0 14px rgba(63,185,80,0.08)}
+.verdict-label{font-size:9px;letter-spacing:2px;color:var(--dim);margin-bottom:4px}
+.verdict-text{font-size:15px;font-weight:800;margin-bottom:8px}
+.v-rugged .verdict-text{color:#ff4444}
+.v-fake .verdict-text{color:#cc44cc}
+.v-risky .verdict-text{color:var(--red)}
+.v-moderate .verdict-text{color:var(--yellow)}
+.v-runner .verdict-text{color:var(--green)}
+.score-bar-wrap{background:#1c2128;border-radius:4px;height:4px;margin-bottom:4px;overflow:hidden}
+.score-bar{height:100%;border-radius:4px;transition:width 0.5s ease}
+.sb-rugged{background:#ff4444}.sb-fake{background:#cc44cc}
+.sb-risky{background:var(--red)}.sb-moderate{background:var(--yellow)}.sb-runner{background:var(--green)}
+.score-label{font-size:9px;color:var(--dim);letter-spacing:1px}
+
+/* MOMENTUM */
+.momentum-box{background:var(--bg2);border:1px solid var(--border);border-radius:6px;
+  padding:5px 10px;text-align:center;font-size:10px;font-weight:600;letter-spacing:0.5px;color:var(--mute)}
+
+/* STATS GRID */
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.stat-cell{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:6px 8px}
+.stat-label{font-size:9px;color:var(--dim);letter-spacing:0.4px;margin-bottom:2px;text-transform:uppercase}
+.stat-val{font-size:13px;font-weight:700;color:var(--text)}
+.c-green{color:var(--green)!important}.c-yellow{color:var(--yellow)!important}
+.c-red{color:var(--red)!important}.c-gold{color:var(--gold)!important}.c-mute{color:var(--mute)!important}
+
+/* TRADE PLAN */
+.trade-plan{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-top:4px}
+.trade-plan-row{display:flex;align-items:center;justify-content:space-between;padding:3px 0;
+  border-bottom:1px solid rgba(255,255,255,0.03);font-size:11px}
+.trade-plan-row:last-child{border-bottom:none}
+.tp-label{color:var(--dim);font-size:9px;text-transform:uppercase;letter-spacing:0.5px}
+.tp-val{font-weight:700;color:var(--text)}
+.tp-green{color:var(--green)!important}
+.tp-gold{color:var(--gold)!important}
+.tp-red{color:var(--red)!important}
+.tp-action{color:var(--mute);font-size:9px}
+
+/* BOTTOM TABS */
+.btabs{display:flex;background:var(--bg2);border:1px solid var(--border);border-radius:7px;overflow:hidden}
+.btab{flex:1;padding:6px 3px;text-align:center;font-size:9px;font-weight:600;
+  color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;letter-spacing:0.4px;text-transform:uppercase}
+.btab:hover{color:var(--mute);background:rgba(255,255,255,0.02)}
+.btab.active{color:var(--blue);background:rgba(88,166,255,0.06);border-bottom-color:var(--blue)}
+.btab-content{display:none;flex-direction:column;gap:5px}
+.btab-content.active{display:flex}
+
+/* LIVE FEED */
+.live-header{display:flex;align-items:center;justify-content:space-between}
+.live-title{font-size:10px;font-weight:700;color:var(--text);letter-spacing:0.5px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);
+  animation:liveBlink 1.5s ease-in-out infinite;flex-shrink:0}
+@keyframes liveBlink{0%,100%{opacity:1}50%{opacity:0.3}}
+.live-feed{display:flex;flex-direction:column;gap:4px;max-height:300px;overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:#21262d transparent}
+.live-feed::-webkit-scrollbar{width:3px}
+.live-feed::-webkit-scrollbar-thumb{background:#21262d;border-radius:3px}
+.live-item{display:flex;align-items:flex-start;gap:7px;padding:6px 9px;
+  background:var(--bg2);border:1px solid var(--border);border-radius:6px;border-left:3px solid var(--border)}
+.li-buy{border-left-color:var(--green)!important}
+.li-sell{border-left-color:var(--red)!important}
+.li-bundle{border-left-color:var(--yellow)!important}
+.li-claim{border-left-color:var(--blue)!important}
+.li-whale{border-left-color:var(--orange)!important}
+.li-warn{border-left-color:var(--red)!important}
+.li-info{border-left-color:var(--dim)!important}
+.live-icon{font-size:12px;flex-shrink:0;margin-top:1px}
+.live-text{flex:1;font-size:11px;color:var(--text2);line-height:1.5}
+.live-link{color:var(--blue);text-decoration:none}
+.live-link:hover{text-decoration:underline}
+.live-empty{color:var(--dim);font-size:11px;text-align:center;padding:16px}
+
+/* FLAG SECTIONS */
+.flag-section{border-radius:7px;padding:8px 10px;border-left:3px solid transparent}
+.fs-red{background:rgba(248,81,73,0.07);border-left-color:var(--red)}
+.fs-yellow{background:rgba(210,153,34,0.07);border-left-color:var(--yellow)}
+.fs-green{background:rgba(63,185,80,0.07);border-left-color:var(--green)}
+.flag-head{font-size:10px;font-weight:700;letter-spacing:0.5px;margin-bottom:5px}
+.fs-red .flag-head{color:var(--red)}.fs-yellow .flag-head{color:var(--yellow)}.fs-green .flag-head{color:var(--green)}
+.flag-item{font-size:11px;color:var(--mute);padding:2px 0;line-height:1.5;
+  border-bottom:1px solid rgba(255,255,255,0.03)}
+.flag-item:last-child{border-bottom:none}
+
+/* NARRA */
+.narra-row{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:9px 11px;margin-bottom:0}
+.narra-label{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}
+.narra-bar-wrap{display:flex;align-items:center;gap:8px}
+.narra-bar-bg{flex:1;background:var(--bg3);border-radius:4px;height:5px;overflow:hidden}
+.narra-bar{height:100%;border-radius:4px;transition:width 0.5s ease}
+.narra-val{font-size:12px;font-weight:700;min-width:32px;text-align:right}
+.narra-hint{font-size:10px;color:var(--dim);margin-top:4px;line-height:1.5}
+
+/* RESULT FOOTER */
+.result-footer{display:flex;align-items:center;justify-content:space-between;padding-top:2px}
+.ca-text{font-size:9px;color:#30363d;font-family:monospace}
+.update-time{font-size:9px;color:var(--dim)}
+
+/* WALLET VIEW */
+.section-title{font-size:13px;font-weight:700;color:var(--text)}
+.section-sub{font-size:10px;color:var(--dim);margin-top:2px}
+#wallet-view{padding:0!important;gap:0!important;overflow:hidden}
+.wlt-toolbar{display:flex;align-items:center;gap:6px;padding:8px 10px;
+  border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0}
+.wlt-search{flex:1;background:var(--bg);border:1px solid var(--border2);
+  color:var(--text2);font-size:11px;padding:5px 9px;border-radius:5px;outline:none}
+.wlt-search:focus{border-color:var(--blue)}
+.wlt-search::placeholder{color:var(--dim)}
+.btn-wlt{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);
+  font-size:11px;padding:5px 9px;border-radius:5px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.btn-wlt:hover{border-color:var(--blue);color:var(--blue)}
+.btn-wlt-add{background:var(--blue);border:none;color:#000;font-size:11px;font-weight:700;
+  padding:5px 10px;border-radius:5px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.btn-wlt-add:hover{background:#79c0ff}
+.wlt-count{font-size:10px;color:var(--dim);padding:4px 10px;
+  border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0}
+.wlt-head{display:grid;grid-template-columns:1fr 75px 65px 28px;
+  padding:5px 10px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0}
+.wth{font-size:9px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.wth.r{text-align:right}
+#wallet-list{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#21262d transparent}
+#wallet-list::-webkit-scrollbar{width:3px}
+#wallet-list::-webkit-scrollbar-thumb{background:#21262d;border-radius:3px}
+.wlt-row{display:grid;grid-template-columns:1fr 75px 65px 28px;
+  align-items:center;padding:7px 10px;border-bottom:1px solid var(--border);transition:background .12s}
+.wlt-row:hover{background:var(--bg2)}
+.wlt-col-name{display:flex;align-items:center;gap:7px;min-width:0}
+.wlt-avatar{width:26px;height:26px;border-radius:50%;background:var(--bg3);
+  border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;
+  font-size:13px;flex-shrink:0}
+.wlt-namewrap{min-width:0}
+.wlt-label{font-size:11px;font-weight:600;color:var(--text);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px}
+.wlt-copybtn{background:none;border:none;color:var(--dim);font-size:10px;cursor:pointer;
+  padding:0;opacity:0;transition:opacity .15s;line-height:1;flex-shrink:0}
+.wlt-row:hover .wlt-copybtn{opacity:1}
+.wlt-copybtn:hover{color:var(--blue)}
+.wlt-short{font-size:9px;color:var(--dim);font-family:monospace;margin-top:1px}
+.wlt-col-bal{font-size:11px;color:var(--text2);text-align:right;
+  display:flex;align-items:center;justify-content:flex-end;gap:3px}
+.wlt-sol{color:var(--blue);font-size:9px}
+.wlt-col-last{font-size:10px;color:var(--mute);text-align:right}
+.wlt-col-del{display:flex;justify-content:flex-end}
+.wlt-del{background:transparent;border:none;color:var(--dim);width:22px;height:22px;
+  border-radius:4px;cursor:pointer;font-size:11px;display:flex;align-items:center;
+  justify-content:center;transition:all .15s;opacity:0}
+.wlt-row:hover .wlt-del{opacity:1}
+.wlt-del:hover{background:rgba(248,81,73,.15);color:var(--red)}
+.wlt-empty{color:var(--dim);font-size:11px;text-align:center;padding:40px 20px}
+.wlt-add-panel{border-top:1px solid var(--border);background:var(--bg2);
+  padding:10px;flex-shrink:0;display:none;flex-direction:column;gap:7px}
+.wlt-add-panel.open{display:flex}
+.wlt-add-title{font-size:11px;font-weight:700;color:var(--text)}
+.wlt-add-sub{font-size:10px;color:var(--dim);margin-top:-3px}
+.wallet-textarea{width:100%;min-height:72px;background:var(--bg);border:1px solid var(--border2);
+  border-radius:6px;color:var(--text2);font-family:monospace;font-size:11px;padding:8px;resize:none;outline:none}
+.wallet-textarea:focus{border-color:var(--blue)}
+.row-btns{display:flex;gap:7px}
+.btn-primary{background:var(--blue);border:none;color:#000;font-size:12px;
+  font-weight:700;padding:8px 16px;border-radius:6px;cursor:pointer;transition:all 0.15s}
+.btn-primary:hover{background:#79c0ff}
+.btn-primary.wide{width:100%}
+.btn-secondary{background:var(--bg3);border:1px solid var(--border2);color:var(--mute);
+  font-size:12px;padding:8px 12px;border-radius:6px;cursor:pointer;transition:all 0.15s}
+.btn-secondary:hover{color:var(--red);border-color:var(--red)}
+
+/* HISTORY */
+.history-empty{color:var(--dim);font-size:11px;text-align:center;padding:30px 16px}
+.hist-item{background:var(--bg2);border:1px solid var(--border);border-radius:7px;
+  padding:8px 10px;cursor:pointer;transition:border-color 0.15s}
+.hist-item:hover{border-color:var(--border2)}
+.hist-top{display:flex;align-items:center;justify-content:space-between}
+.hist-ticker{font-size:12px;font-weight:700;color:var(--text)}
+.hist-v{font-size:9px;font-weight:600;padding:2px 7px;border-radius:3px}
+.hv-rugged,.hv-fake{background:rgba(248,81,73,0.15);color:var(--red)}
+.hv-risky{background:rgba(248,81,73,0.1);color:var(--red)}
+.hv-moderate{background:rgba(210,153,34,0.1);color:var(--yellow)}
+.hv-runner{background:rgba(63,185,80,0.1);color:var(--green)}
+.hist-meta{font-size:9px;color:var(--dim);margin-top:2px}
+
+/* FILTERS */
+.filter-group{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.filter-group-title{font-size:10px;font-weight:700;color:var(--mute);letter-spacing:1px;
+  text-transform:uppercase;margin-bottom:8px}
+.filter-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.filter-row:last-child{margin-bottom:0}
+.filter-label{font-size:11px;color:var(--text2);flex:1}
+.filter-badge{font-size:9px;padding:1px 6px;border-radius:3px;margin-left:4px}
+.fb-red{background:rgba(248,81,73,0.15);color:var(--red)}
+.fb-yellow{background:rgba(210,153,34,0.15);color:var(--yellow)}
+.fb-green{background:rgba(63,185,80,0.15);color:var(--green)}
+.filter-input{background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  font-size:11px;padding:3px 7px;border-radius:4px;width:70px;text-align:right;outline:none}
+.filter-input:focus{border-color:var(--blue)}
+.filter-toggle{position:relative;width:36px;height:20px;cursor:pointer}
+.filter-toggle input{opacity:0;width:0;height:0}
+.ftoggle-slider{position:absolute;inset:0;background:var(--bg3);border:1px solid var(--border2);
+  border-radius:10px;transition:all 0.2s}
+.ftoggle-slider:before{content:'';position:absolute;width:14px;height:14px;left:2px;top:2px;
+  background:var(--mute);border-radius:50%;transition:all 0.2s}
+.filter-toggle input:checked + .ftoggle-slider{background:rgba(63,185,80,0.2);border-color:var(--green)}
+.filter-toggle input:checked + .ftoggle-slider:before{transform:translateX(16px);background:var(--green)}
+.filter-select{background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  font-size:10px;padding:3px 6px;border-radius:4px;outline:none;cursor:pointer}
+.filter-select:focus{border-color:var(--blue)}
+.btn-reset-filters{background:none;border:1px solid var(--border);color:var(--dim);
+  font-size:10px;padding:5px 12px;border-radius:5px;cursor:pointer;transition:all 0.15s;align-self:flex-end}
+.btn-reset-filters:hover{color:var(--red);border-color:var(--red)}
+
+/* ERROR */
+.error-msg{color:var(--red);text-align:center;padding:24px 12px;line-height:1.7;font-size:12px}
+
+/* TOAST */
+#toast{position:fixed;bottom:14px;left:50%;transform:translateX(-50%) translateY(10px);
+  background:var(--blue);color:#000;font-size:11px;font-weight:600;
+  padding:6px 14px;border-radius:7px;white-space:nowrap;opacity:0;
+  transition:all 0.25s ease;pointer-events:none;z-index:999}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* DEBUG TAB */
+#debug-view{padding:10px;gap:8px}
+.dbg-section{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:9px 11px}
+.dbg-title{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--mute);margin-bottom:7px}
+.dbg-row{display:flex;align-items:center;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.03);font-size:11px}
+.dbg-row:last-child{border-bottom:none}
+.dbg-label{color:var(--mute);flex:1}
+.dbg-val{font-size:10px;font-weight:600;text-align:right}
+.dbg-ok{color:var(--green)}.dbg-fail{color:var(--red)}.dbg-warn{color:var(--yellow)}.dbg-skip{color:var(--dim)}
+.dbg-ms{font-size:9px;color:var(--dim);margin-left:4px}
+.score-step{display:flex;align-items:center;justify-content:space-between;padding:2px 0;font-size:10px}
+.score-step-label{color:var(--text2);flex:1}
+.score-step-val{font-weight:700;min-width:36px;text-align:right}
+.score-plus{color:var(--green)}.score-minus{color:var(--red)}.score-zero{color:var(--dim)}
+.dbg-tracked-row{font-size:10px;color:var(--dim);padding:2px 0;line-height:1.5}
+.dbg-refresh-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--mute);font-size:10px;padding:4px 10px;border-radius:5px;cursor:pointer;transition:all 0.15s;margin-top:4px}
+.dbg-refresh-btn:hover{color:var(--text);border-color:var(--blue)}
+/* SETTINGS */
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.03);font-size:11px}
+.setting-row:last-child{border-bottom:none}
+.setting-label{color:var(--text2);flex:1;line-height:1.4}
+.setting-sublabel{font-size:9px;color:var(--dim);display:block;margin-top:1px}
+.setting-input{background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px 6px;border-radius:4px;width:60px;text-align:right;outline:none}
+.setting-input:focus{border-color:var(--blue)}
+.toggle-wrap{position:relative;width:34px;height:18px;cursor:pointer;flex-shrink:0}
+.toggle-wrap input{opacity:0;width:0;height:0;position:absolute}
+.toggle-slider{position:absolute;inset:0;background:var(--bg3);border:1px solid var(--border2);border-radius:9px;transition:all 0.2s}
+.toggle-slider:before{content:"";position:absolute;width:12px;height:12px;left:2px;top:2px;background:var(--mute);border-radius:50%;transition:all 0.2s}
+.toggle-wrap input:checked + .toggle-slider{background:rgba(63,185,80,0.2);border-color:var(--green)}
+.toggle-wrap input:checked + .toggle-slider:before{transform:translateX(16px);background:var(--green)}
+.weight-badge{font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px;flex-shrink:0}
+.wb-red{background:rgba(248,81,73,0.15);color:var(--red)}
+.wb-green{background:rgba(63,185,80,0.15);color:var(--green)}
+.wb-yellow{background:rgba(210,153,34,0.15);color:var(--yellow)}
+#debug-view,#settings-view{padding:10px;gap:8px}
+
+/* TWEET CARDS in Narra tab */
+.tweet-card { background:var(--bg3); border:1px solid var(--border); border-radius:7px; padding:8px 10px; margin-bottom:5px; }
+.tweet-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+.tweet-author { font-size:10px; font-weight:700; color:var(--blue); }
+.tweet-stats { display:flex; gap:7px; font-size:9px; color:var(--dim); }
+.tweet-text { font-size:10px; color:var(--text2); line-height:1.5; word-break:break-word; }
+.tweet-link { display:block; font-size:9px; color:var(--blue); text-decoration:none; margin-top:4px; }
+.tweet-link:hover { text-decoration:underline; }
+
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <div class="logo">
+      <span class="logo-diamond">◈</span>
+      <span class="logo-title" style="background:linear-gradient(90deg,#ff8c00,#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:3px">W SCANNER</span>
+    </div>
+    <div class="header-right">
+      <span class="auto-badge" id="auto-badge" title="Toggle auto-refresh">4s AUTO</span>
+      <span class="auto-badge" id="pp-status" title="PumpPortal WebSocket" style="background:rgba(88,166,255,0.15);color:var(--blue);border-color:rgba(88,166,255,0.3);cursor:default">○ PP</span>
+      <button class="icon-btn" id="btn-refresh-now" title="Scan now">↻</button>
+    </div>
+  </div>
+
+  <div id="top-tabs">
+    <div class="top-tab active" data-tab="scan">◎ Scan</div>
+    <div class="top-tab" data-tab="wallet">⚙ Wallets</div>
+    <div class="top-tab" data-tab="history">▦ History</div>
+    <div class="top-tab" data-tab="filters">⊟ Filters</div>
+    <div class="top-tab" data-tab="debug">🔬 Debug</div>
+  </div>
+
+  <!-- SCAN -->
+  <div class="view active" id="scan-view">
+    <div id="idle-state">
+      <div class="idle-icon">◈</div>
+      <div class="idle-text">Open any token on<br><strong style="color:#8b949e">Axiom Pro</strong><br>to begin scanning</div>
+    </div>
+    <div id="loading-state">
+      <div class="spinner"></div>
+      <div class="loading-text" id="loading-text">Scanning token...</div>
+    </div>
+    <div id="result-state">
+      <!-- TOKEN HEADER -->
+      <div class="token-header" id="token-header-box">
+        <div class="token-img-ph" id="token-img-el">◈</div>
+        <div class="token-info">
+          <div class="token-top-row">
+            <span class="token-symbol" id="token-symbol">—</span>
+            <button class="copy-ca-btn" id="copy-ca-btn">⎘ CA</button>
+            <button class="copy-ca-btn" id="btn-check-x" title="Check X/Twitter">𝕏 X</button>
+            <button class="copy-ca-btn" id="btn-rescan" title="Rescan token">↻</button>
+          </div>
+          <div class="token-name-row">
+            <span class="token-name" id="token-name"></span>
+            <span class="token-age" id="token-age">—</span>
+          </div>
+          <div id="wallet-badge-wrap"></div>
+        </div>
+      </div>
+
+      <!-- VERDICT -->
+      <div class="verdict-box" id="verdict-box">
+        <div class="verdict-label">VERDICT</div>
+        <div class="verdict-text" id="verdict-text">—</div>
+        <div class="score-bar-wrap"><div class="score-bar" id="score-bar" style="width:0%"></div></div>
+        <div class="score-label" id="score-label">Score 0 / 100</div>
+      </div>
+
+      <!-- MOMENTUM -->
+      <div class="momentum-box" id="momentum-indicator" style="display:none"></div>
+
+      <!-- KEY STATS -->
+      <div class="stats-grid">
+        <div class="stat-cell"><div class="stat-label">MKT CAP</div><div class="stat-val" id="s-mc">—</div></div>
+        <div class="stat-cell"><div class="stat-label">5M VOL</div><div class="stat-val" id="s-vol">—</div></div>
+        <div class="stat-cell"><div class="stat-label">VOL/MC</div><div class="stat-val" id="s-ratio">—</div></div>
+        <div class="stat-cell"><div class="stat-label">BUNDLE %</div><div class="stat-val" id="s-bundle">—</div></div>
+        <div class="stat-cell"><div class="stat-label">TOP 70 %</div><div class="stat-val" id="s-top70">—</div></div>
+        <div class="stat-cell"><div class="stat-label">NARRA %</div><div class="stat-val" id="s-narra">—</div></div>
+        <div class="stat-cell"><div class="stat-label">DEV FUND</div><div class="stat-val" id="s-dev-fund" style="cursor:pointer;text-decoration:underline dotted" title="Click to view on Solscan">—</div></div>
+        <div class="stat-cell"><div class="stat-label">HOLDERS</div><div class="stat-val" id="s-holders">—</div></div>
+        <div class="stat-cell"><div class="stat-label">TREND RANK</div><div class="stat-val" id="s-trend-rank">—</div></div>
+      </div>
+
+
+      <!-- BOTTOM TABS -->
+      <div class="btabs">
+        <div class="btab active" data-btab="live">⚡ Live</div>
+        <div class="btab" data-btab="info">📊 Info</div>
+        <div class="btab" data-btab="narra">🔥 Narra</div>
+        <div class="btab" data-btab="trending">📈 Trend</div>
+      </div>
+
+      <div class="btab-content active" id="btab-live">
+        <div class="live-header">
+          <span class="live-title">LIVE ACTIVITY</span>
+          <div class="live-dot" id="live-dot"></div>
+        </div>
+        <div class="live-feed" id="live-feed">
+          <div class="live-empty">Fetching live data...</div>
+        </div>
+      </div>
+
+      <div class="btab-content" id="btab-info">
+        <div id="info-content"><div class="live-empty">Loading...</div></div>
+      </div>
+
+      <div class="btab-content" id="btab-narra">
+        <div id="narra-content"></div>
+      </div>
+
+      <div class="btab-content" id="btab-trending">
+        <div class="live-header">
+          <span class="live-title">GMGN TRENDING (1H)</span>
+          <span style="font-size:9px;color:var(--dim)">Fragile — may break</span>
+        </div>
+        <div class="live-feed" id="gmgn-trending-feed">
+          <div class="live-empty">Click refresh to load trending tokens</div>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:6px">
+          <button class="btn-primary" id="btn-gmgn-refresh" style="font-size:10px;padding:5px 12px">↻ Refresh Trending</button>
+        </div>
+      </div>
+
+      <div class="result-footer">
+        <div class="ca-text" id="ca-text">—</div>
+        <div class="update-time" id="update-time">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WALLETS -->
+  <div class="view" id="wallet-view">
+    <div class="wlt-toolbar">
+      <input class="wlt-search" id="wallet-search" placeholder="Search by name or addr..." />
+      <button class="btn-wlt" id="btn-import-wallets">Import</button>
+      <button class="btn-wlt" id="btn-export-wallets">Export</button>
+      <button class="btn-wlt-add" id="btn-toggle-add-wallet">+ Add Wallet</button>
+    </div>
+    <div class="wlt-count" id="wallet-count">0 wallets loaded</div>
+    <div class="wlt-head">
+      <div class="wth">Name</div>
+      <div class="wth r">Balance</div>
+      <div class="wth r">Last Active</div>
+      <div class="wth"></div>
+    </div>
+    <div id="wallet-list"></div>
+    <div id="wallet-pnl-panel" style="border-top:1px solid var(--border);background:var(--bg2);padding:10px;display:none;flex-direction:column;gap:6px;position:relative">
+      <button id="btn-close-pnl" style="position:absolute;top:6px;right:8px;background:none;border:none;color:var(--dim);font-size:14px;cursor:pointer;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:all .15s" title="Close">✕</button>
+      <div class="wlt-add-title">GMGN Wallet PnL</div>
+      <div class="wlt-add-sub" style="font-size:10px;color:var(--dim)">Select a wallet to lookup PnL on GMGN</div>
+      <div id="wallet-pnl-list" style="font-size:11px;color:var(--text2)"></div>
+    </div>
+    <div class="wlt-add-panel" id="wlt-add-panel">
+      <div class="wlt-add-title">Add Wallets</div>
+      <div class="wlt-add-sub">Export from Axiom → Tracked → paste here</div>
+      <textarea class="wallet-textarea" id="wallet-input"
+        placeholder="Paste wallet addresses here&#10;One per line or comma separated"></textarea>
+      <div class="row-btns">
+        <button class="btn-primary wide" id="btn-save-wallets">💾 Save Wallets</button>
+        <button class="btn-secondary" id="btn-clear-wallets">Remove All</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="view" id="history-view">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="section-title">Scan History</div>
+      <button class="btn-secondary" id="btn-clear-history" style="font-size:10px;padding:4px 10px">Clear</button>
+    </div>
+    <div id="history-list"><div class="history-empty">No scans yet.</div></div>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="view" id="filters-view">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div><div class="section-title">Filters</div>
+      <div class="section-sub">Set thresholds — scanner flags anything outside these</div></div>
+      <button class="btn-reset-filters" id="btn-reset-filters">Reset</button>
+    </div>
+
+    <div class="filter-group">
+      <div class="filter-group-title">📊 Volume & Market Cap</div>
+      <div class="filter-row">
+        <span class="filter-label">Min Vol/MC %<span class="filter-badge fb-red">RED below</span></span>
+        <input class="filter-input" type="number" id="f-volmc-min" value="60" min="0" max="500">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Strong Vol/MC %<span class="filter-badge fb-green">GREEN above</span></span>
+        <input class="filter-input" type="number" id="f-volmc-strong" value="85" min="0" max="500">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">🌟 Golden glow at %<span class="filter-badge fb-yellow">GOLD above</span></span>
+        <input class="filter-input" type="number" id="f-volmc-gold" value="140" min="0" max="1000">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Min MCap ($)</span>
+        <input class="filter-input" type="number" id="f-mc-min" value="0">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Max MCap ($)</span>
+        <input class="filter-input" type="number" id="f-mc-max" value="0" placeholder="0=off">
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <div class="filter-group-title">👛 Holder Safety</div>
+      <div class="filter-row">
+        <span class="filter-label">Max Dev Holding %<span class="filter-badge fb-red">RED above</span></span>
+        <input class="filter-input" type="number" id="f-dev-max" value="3" min="0" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Nuke wallet threshold %<span class="filter-badge fb-red">RED above</span></span>
+        <input class="filter-input" type="number" id="f-nuke-pct" value="3.5" min="0" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Max Top 10 concentration %<span class="filter-badge fb-yellow">WARN above</span></span>
+        <input class="filter-input" type="number" id="f-top10-warn" value="40" min="0" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Max bundle %<span class="filter-badge fb-red">RED above</span></span>
+        <input class="filter-input" type="number" id="f-bundle-max" value="15" min="0" max="100">
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <div class="filter-group-title">⚡ Activity & Age</div>
+      <div class="filter-row">
+        <span class="filter-label">Min 5m transactions<span class="filter-badge fb-yellow">WARN below</span></span>
+        <input class="filter-input" type="number" id="f-txn-min" value="5" min="0">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Min liquidity ($)<span class="filter-badge fb-red">RED below</span></span>
+        <input class="filter-input" type="number" id="f-liq-min" value="3000">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Whale buy alert (SOL)<span class="filter-badge fb-yellow">ALERT above</span></span>
+        <input class="filter-input" type="number" id="f-whale-buy" value="12" min="1">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Whale sell alert (SOL)<span class="filter-badge fb-red">ALERT above</span></span>
+        <input class="filter-input" type="number" id="f-whale-sell" value="15" min="1">
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <div class="filter-group-title">🔧 Rugged Detection</div>
+      <div class="filter-row">
+        <span class="filter-label">Rugged if 24h drop %<span class="filter-badge fb-red">RUGGED</span></span>
+        <input class="filter-input" type="number" id="f-rug-pct" value="90" min="50" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Skip rugged if actively trading</span>
+        <label class="filter-toggle">
+          <input type="checkbox" id="f-skip-rug-active" checked>
+          <span class="ftoggle-slider"></span>
+        </label>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Fake chart: equal buy/sell ratio</span>
+        <label class="filter-toggle">
+          <input type="checkbox" id="f-fake-detect" checked>
+          <span class="ftoggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <div class="filter-group-title">🔑 API Keys</div>
+      <div class="filter-row">
+        <span class="filter-label">Helius API Key <span class="filter-badge fb-green">FREE</span></span>
+        <input class="filter-input" type="text" id="f-helius-key" placeholder="paste key" style="width:140px;text-align:left;font-family:monospace">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label" style="font-size:10px;color:var(--dim)">Get free key at helius.xyz — 1M credits/mo, no card</span>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Solscan API Key <span class="filter-badge fb-green">FREE</span></span>
+        <input class="filter-input" type="text" id="f-solscan-key" placeholder="paste key" style="width:140px;text-align:left;font-family:monospace">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">GMGN API Key <span class="filter-badge fb-green">FREE at gmgn.ai/ai</span></span>
+        <input class="filter-input" type="text" id="f-gmgn-key" placeholder="paste key" style="width:140px;text-align:left;font-family:monospace">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">OpenTwitter Token <span class="filter-badge fb-green">FREE at 6551.io</span></span>
+        <input class="filter-input" type="text" id="f-twitter-token" placeholder="paste token" style="width:140px;text-align:left;font-family:monospace">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label" style="font-size:10px;color:var(--dim)">Get free key at solscan.io/apis — wallet first-tx date</span>
+      </div>
+    </div>
+
+    
+    <div class="filter-group">
+      <div class="filter-group-title">⚡ Solana RPC Configuration</div>
+      <div class="filter-row">
+        <span class="filter-label">RPC Endpoint <span class="filter-badge fb-green">FREE</span></span>
+        <select class="filter-select" id="f-rpc-endpoint">
+          <option value="helius">Helius (Recommended)</option>
+          <option value="quicknode">QuickNode</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Custom RPC URL <span class="filter-badge fb-yellow">Optional</span></span>
+        <input class="filter-input" type="text" id="f-custom-rpc" placeholder="https://..." style="width:140px;text-align:left;font-family:monospace">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label" style="font-size:10px;color:var(--dim)">Used for: batch SOL balance checks, dev wallet funding trace, wallet age verification</span>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <div class="filter-group-title">🔌 Helius WebSocket</div>
+      <div class="filter-row">
+        <span class="filter-label">Enable WebSocket <span class="filter-badge fb-green">REAL-TIME</span></span>
+        <label class="filter-toggle">
+          <input type="checkbox" id="f-helius-ws-enabled" checked>
+          <span class="ftoggle-slider"></span>
+        </label>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">WS Endpoint</span>
+        <input class="filter-input" type="text" id="f-helius-ws-url" value="wss://mainnet.helius-rpc.com/?api-key=" placeholder="wss://..." style="width:140px;text-align:left;font-family:monospace">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Auto-connect on token open</span>
+        <label class="filter-toggle">
+          <input type="checkbox" id="f-helius-ws-auto" checked>
+          <span class="ftoggle-slider"></span>
+        </label>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label" style="font-size:10px;color:var(--dim)">Unlocks: Live transactions, holder count tracking, tracked wallet alerts, bundle detection</span>
+      </div>
+    </div>
+<div class="filter-group" id="verdict-tuner-group">
+      <div class="filter-group-title">🎯 VERDICT TUNER — Control how final verdicts are decided</div>
+
+      <!-- SCORE THRESHOLDS -->
+      <div style="font-size:10px;color:var(--blue);font-weight:600;margin:6px 0 4px;letter-spacing:.5px">SCORE THRESHOLDS</div>
+      <div class="filter-row">
+        <span class="filter-label">RUNNER score min <span class="filter-badge fb-green">≥ this = RUNNER 🚀</span></span>
+        <input class="filter-input" type="number" id="vt-score-runner" value="80" min="1" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">MODERATE score min <span class="filter-badge fb-yellow">≥ this = DECENT</span></span>
+        <input class="filter-input" type="number" id="vt-score-moderate" value="65" min="1" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">HIGH RISK score max <span class="filter-badge fb-red">below = HIGH RISK</span></span>
+        <input class="filter-input" type="number" id="vt-score-highrisk" value="50" min="1" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">RISKY SKIP score max <span class="filter-badge fb-red">below = SKIP</span></span>
+        <input class="filter-input" type="number" id="vt-score-risky" value="30" min="1" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Red flag count for RISKY <span class="filter-badge fb-red">≥ flags = RISKY</span></span>
+        <input class="filter-input" type="number" id="vt-redflag-risky" value="3" min="1" max="10">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Red flag count for HIGH RISK <span class="filter-badge fb-yellow">≥ flags = HIGH RISK</span></span>
+        <input class="filter-input" type="number" id="vt-redflag-highrisk" value="2" min="1" max="10">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Red flag count for MODERATE <span class="filter-badge fb-yellow">≥ flags = MODERATE</span></span>
+        <input class="filter-input" type="number" id="vt-redflag-moderate" value="1" min="1" max="10">
+      </div>
+
+      <!-- SCORE PENALTIES -->
+      <div style="font-size:10px;color:var(--blue);font-weight:600;margin:10px 0 4px;letter-spacing:.5px">SCORE PENALTIES (how many points each bad signal costs)</div>
+      <div class="filter-row">
+        <span class="filter-label">No holder data penalty</span>
+        <input class="filter-input" type="number" id="vt-p-no-holder" value="20" min="0" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Fake/botted chart</span>
+        <input class="filter-input" type="number" id="vt-p-fake" value="50" min="0" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Bundle detected (RugCheck)</span>
+        <input class="filter-input" type="number" id="vt-p-bundle" value="40" min="0" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Sniper detected</span>
+        <input class="filter-input" type="number" id="vt-p-sniper" value="15" min="0" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Insider wallets</span>
+        <input class="filter-input" type="number" id="vt-p-insider" value="25" min="0" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Dev holding danger</span>
+        <input class="filter-input" type="number" id="vt-p-dev-danger" value="45" min="0" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Dev holding borderline</span>
+        <input class="filter-input" type="number" id="vt-p-dev-border" value="20" min="0" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Nuke wallet (each)</span>
+        <input class="filter-input" type="number" id="vt-p-nuke" value="35" min="0" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Top 10 very concentrated</span>
+        <input class="filter-input" type="number" id="vt-p-top10-high" value="30" min="0" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Top 10 moderate concentration</span>
+        <input class="filter-input" type="number" id="vt-p-top10-mod" value="12" min="0" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Vol/MC too weak</span>
+        <input class="filter-input" type="number" id="vt-p-volmc-weak" value="15" min="0" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Thin liquidity</span>
+        <input class="filter-input" type="number" id="vt-p-liq-thin" value="25" min="0" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Holders very thin (&lt;50)</span>
+        <input class="filter-input" type="number" id="vt-p-holders-thin" value="30" min="0" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Already pumped severe</span>
+        <input class="filter-input" type="number" id="vt-p-pumped" value="30" min="0" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Same-slot bundle (Helius)</span>
+        <input class="filter-input" type="number" id="vt-p-slot-bundle" value="35" min="0" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Fresh wallet (each, max 3)</span>
+        <input class="filter-input" type="number" id="vt-p-fresh-wallet" value="20" min="0" max="100">
+      </div>
+
+      <!-- SCORE BONUSES -->
+      <div style="font-size:10px;color:var(--green);font-weight:600;margin:10px 0 4px;letter-spacing:.5px">SCORE BONUSES (points added for good signals)</div>
+      <div class="filter-row">
+        <span class="filter-label">Dev holding 0%</span>
+        <input class="filter-input" type="number" id="vt-b-dev-zero" value="8" min="0" max="30">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Dev holding acceptable</span>
+        <input class="filter-input" type="number" id="vt-b-dev-ok" value="2" min="0" max="20">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Vol/MC strong 🔥</span>
+        <input class="filter-input" type="number" id="vt-b-volmc-strong" value="12" min="0" max="30">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Vol/MC massive 🔥🔥</span>
+        <input class="filter-input" type="number" id="vt-b-volmc-massive" value="20" min="0" max="40">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Tracked wallets holding</span>
+        <input class="filter-input" type="number" id="vt-b-tracked" value="15" min="0" max="30">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Good holder count</span>
+        <input class="filter-input" type="number" id="vt-b-holders-good" value="5" min="0" max="20">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Organic txn activity</span>
+        <input class="filter-input" type="number" id="vt-b-txns-organic" value="5" min="0" max="20">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Token very fresh age</span>
+        <input class="filter-input" type="number" id="vt-b-age-fresh" value="5" min="0" max="20">
+      </div>
+
+      <!-- HOLDER THRESHOLDS -->
+      <div style="font-size:10px;color:var(--blue);font-weight:600;margin:10px 0 4px;letter-spacing:.5px">HOLDER COUNT THRESHOLDS</div>
+      <div class="filter-row">
+        <span class="filter-label">Min holders for RUNNER <span class="filter-badge fb-green">below = warn</span></span>
+        <input class="filter-input" type="number" id="vt-min-holders" value="100" min="0">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Very thin holders (severe penalty)</span>
+        <input class="filter-input" type="number" id="vt-holders-very-thin" value="50" min="0">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Thin holders (moderate penalty)</span>
+        <input class="filter-input" type="number" id="vt-holders-thin" value="100" min="0">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Building holders (small penalty)</span>
+        <input class="filter-input" type="number" id="vt-holders-building" value="200" min="0">
+      </div>
+
+      <!-- DEAD CAT -->
+      <div style="font-size:10px;color:var(--blue);font-weight:600;margin:10px 0 4px;letter-spacing:.5px">DEAD CAT / ALREADY PUMPED DETECTION</div>
+      <div class="filter-row">
+        <span class="filter-label">Dead cat detect <span class="filter-badge fb-yellow">on/off</span></span>
+        <label class="filter-toggle">
+          <input type="checkbox" id="vt-dead-cat-on" checked>
+          <span class="ftoggle-slider"></span>
+        </label>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">24h drop % = WARN <span class="filter-badge fb-yellow">pumping again after drop</span></span>
+        <input class="filter-input" type="number" id="vt-dead-cat-warn" value="40" min="0" max="100">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">24h drop % = TRAP <span class="filter-badge fb-red">severe dead cat</span></span>
+        <input class="filter-input" type="number" id="vt-dead-cat-severe" value="70" min="0" max="100">
+      </div>
+    </div>
+
+<div style="display:flex;justify-content:flex-start;margin-top:4px">
+      <button class="btn-primary" id="btn-save-filters">💾 Save Filter Settings</button>
+    </div>
+  </div>
+
+
+  <!-- DEBUG VIEW -->
+  <div class="view" id="debug-view">
+    <div class="dbg-section">
+      <div class="dbg-title">📡 API Sources</div>
+      <div id="dbg-sources">
+        <div class="dbg-row"><span class="dbg-label">DexScreener</span><span class="dbg-val dbg-skip">—</span></div>
+        <div class="dbg-row"><span class="dbg-label">Rugcheck</span><span class="dbg-val dbg-skip">—</span></div>
+        <div class="dbg-row"><span class="dbg-label">Pump.fun</span><span class="dbg-val dbg-skip">—</span></div>
+        <div class="dbg-row"><span class="dbg-label">Birdeye</span><span class="dbg-val dbg-skip">—</span></div>
+        <div class="dbg-row"><span class="dbg-label">GMGN</span><span class="dbg-val dbg-skip">—</span></div>
+        <div class="dbg-row"><span class="dbg-label">GeckoTerminal</span><span class="dbg-val dbg-skip">—</span></div>
+        <div class="dbg-row"><span class="dbg-label">Helius</span><span class="dbg-val dbg-skip">—</span></div>
+        <div class="dbg-row"><span class="dbg-label">Helius WS</span><span class="dbg-val dbg-skip">—</span></div>
+      </div>
+    </div>
+
+    <div class="dbg-section">
+      <div class="dbg-title">👛 Tracked Wallet Check</div>
+      <div id="dbg-tracked">
+        <div class="dbg-tracked-row">Open a token to see details</div>
+      </div>
+    </div>
+
+    <div class="dbg-section">
+      <div class="dbg-title">📊 Score Breakdown</div>
+      <div id="dbg-score-steps">
+        <div class="score-step"><span class="score-step-label">Open a token first</span><span class="score-step-val score-zero">—</span></div>
+      </div>
+    </div>
+
+    <div class="dbg-section">
+      <div class="dbg-title">🔢 Raw Data Values</div>
+      <div id="dbg-raw">
+        <div class="dbg-row"><span class="dbg-label">MCap</span><span class="dbg-val" id="dbg-mc">—</span></div>
+        <div class="dbg-row"><span class="dbg-label">5m Vol</span><span class="dbg-val" id="dbg-vol">—</span></div>
+        <div class="dbg-row"><span class="dbg-label">Liquidity</span><span class="dbg-val" id="dbg-liq">—</span></div>
+        <div class="dbg-row"><span class="dbg-label">5m Buys/Sells</span><span class="dbg-val" id="dbg-txns">—</span></div>
+        <div class="dbg-row"><span class="dbg-label">Holders</span><span class="dbg-val" id="dbg-holders">—</span></div>
+        <div class="dbg-row"><span class="dbg-label">Dev %</span><span class="dbg-val" id="dbg-dev">—</span></div>
+        <div class="dbg-row"><span class="dbg-label">Bundle %</span><span class="dbg-val" id="dbg-bundle">—</span></div>
+        <div class="dbg-row"><span class="dbg-label">Top 10 %</span><span class="dbg-val" id="dbg-top10">—</span></div>
+        <div class="dbg-row"><span class="dbg-label">Price 5m/1h/24h</span><span class="dbg-val" id="dbg-price">—</span></div>
+        <div class="dbg-row"><span class="dbg-label">Pair Age</span><span class="dbg-val" id="dbg-age">—</span></div>
+        <div class="dbg-row"><span class="dbg-label">Data Source</span><span class="dbg-val" id="dbg-source">—</span></div>
+      </div>
+    </div>
+
+    <button class="dbg-refresh-btn" id="dbg-refresh-btn">↻ Rescan &amp; Refresh Debug</button>
+  </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="config.js"></script>
+<script src="sidepanel.js"></script>
+</body>
+</html>
